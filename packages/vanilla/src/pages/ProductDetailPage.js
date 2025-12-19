@@ -2,6 +2,7 @@ import { productStore } from "../stores/index.js";
 import { loadProductDetailForPage } from "../services/index.js";
 import { router, withLifecycle } from "../router/index.js";
 import { PageWrapper } from "./PageWrapper.js";
+import { updateInitialData } from "../lib/asyncContext.js";
 
 const loadingContent = `
   <div class="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -243,6 +244,12 @@ export const ProductDetailPage = withLifecycle(
   },
   () => {
     const { currentProduct: product, relatedProducts = [], error, loading } = productStore.getState();
+
+    updateInitialData("meta", {
+      title: `${product.title} - 쇼핑몰`,
+      description: `${product.title} - ${product.brand || "쇼핑몰"}`,
+      image: product.image,
+    });
 
     return PageWrapper({
       headerLeft: `

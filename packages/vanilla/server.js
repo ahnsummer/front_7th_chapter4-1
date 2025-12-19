@@ -5,6 +5,7 @@ import { createMiddleware } from "@mswjs/http-middleware";
 import { handlers } from "./src/mocks/handlers.js";
 import { createServer as createViteServer } from "vite";
 import { render } from "./src/main-server.js";
+import { runWithContext } from "./src/lib/asyncContext.js";
 
 const app = express();
 
@@ -35,16 +36,27 @@ routes.forEach((route) => {
     return app.get(async (req, res) => {
       const origin = `${req.protocol}://${req.get("host")}`;
 
-      globalThis.origin = origin;
-      globalThis.pathname = req.url;
-      globalThis.params = req.params;
-      globalThis.search = req.query;
-      globalThis.initialData = {};
+      // 요청별로 격리된 컨텍스트 생성
+      const context = {
+        origin,
+        pathname: req.url,
+        params: req.params,
+        search: req.query,
+        initialData: {},
+      };
 
-      const html = await render(route.component);
+      await runWithContext(context, async () => {
+        // globalThis에도 설정 (하위 호환성)
+        globalThis.origin = context.origin;
+        globalThis.pathname = context.pathname;
+        globalThis.params = context.params;
+        globalThis.search = context.search;
+        globalThis.initialData = context.initialData;
 
-      res.send(
-        `
+        const html = await render(route.component);
+
+        res.send(
+          `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -61,48 +73,55 @@ routes.forEach((route) => {
     <div id="root">${html}</div>
     <script type="module" src="/src/main.js"></script>
     <script>
-      window.__INITIAL_DATA__ = ${JSON.stringify(globalThis.initialData)};
+      window.__INITIAL_DATA__ = ${JSON.stringify(context.initialData)};
     </script>
     </body>
     </html>
       `.trim(),
-      );
+        );
+      });
     });
   }
 
   app.get(route.path, async (req, res) => {
     const origin = `${req.protocol}://${req.get("host")}`;
 
-    globalThis.origin = origin;
-    globalThis.pathname = req.url;
-    globalThis.params = req.params;
-    globalThis.search = req.query;
-    globalThis.initialData = {};
+    // 요청별로 격리된 컨텍스트 생성
+    const context = {
+      origin,
+      pathname: req.url,
+      params: req.params,
+      search: req.query,
+      initialData: {},
+    };
 
-    console.log("render");
-    const html = await render(route.component);
+    await runWithContext(context, async () => {
+      // globalThis에도 설정 (하위 호환성)
+      globalThis.origin = context.origin;
+      globalThis.pathname = context.pathname;
+      globalThis.params = context.params;
+      globalThis.search = context.search;
+      globalThis.initialData = context.initialData;
 
-    // 메타태그 생성
-    let metaTags = "";
-    let title = "Vanilla Javascript SSR";
+      const html = await render(route.component);
 
-    if (globalThis.initialData.product?.currentProduct) {
-      const product = globalThis.initialData.product.currentProduct;
-      title = `${product.title} - 쇼핑몰`;
-      metaTags = `
-    <meta name="description" content="${product.title} - ${product.brand || "쇼핑몰"}" />
-    <meta property="og:title" content="${product.title}" />
-    <meta property="og:description" content="${product.title} - ${Number(product.lprice).toLocaleString()}원" />
-    <meta property="og:image" content="${product.image}" />`;
-    } else {
-      metaTags = `
-    <meta name="description" content="다양한 상품을 만나보세요" />
-    <meta property="og:title" content="쇼핑몰" />
-    <meta property="og:description" content="다양한 상품을 만나보세요" />`;
-    }
+      // 메타태그 생성
+      let metaTags = `<meta property="og:title" content="${route.title}" />`;
 
-    res.send(
-      `
+      let title = route.title;
+
+      if (context.initialData.meta) {
+        const meta = context.initialData.meta;
+        title = meta.title;
+        metaTags = `
+    <meta name="description" content="${meta.description}" />
+    <meta property="og:title" content="${title}" />
+    <meta property="og:description" content="${meta.description}" />
+    <meta property="og:image" content="${meta.image}" />`;
+      }
+
+      res.send(
+        `
   <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -118,12 +137,13 @@ routes.forEach((route) => {
   <div id="root">${html}</div>
   <script type="module" src="/src/main.js"></script>
   <script>
-    window.__INITIAL_DATA__ = ${JSON.stringify(globalThis.initialData)};
+    window.__INITIAL_DATA__ = ${JSON.stringify(context.initialData)};
   </script>
   </body>
   </html>
     `.trim(),
-    );
+      );
+    });
   });
 });
 

@@ -1,4 +1,5 @@
 import { createObserver } from "./createObserver.js";
+import { updateInitialData } from "./asyncContext.js";
 
 /**
  * Redux-style Store 생성 함수
@@ -10,8 +11,6 @@ export const createStore = (key, reducer, initialState) => {
   const { subscribe, notify } = createObserver();
 
   if ("window" in globalThis) {
-    console.log("initialState", initialState);
-    console.log("initialData[key]", window.__INITIAL_DATA__?.[key]);
     initialState = window.__INITIAL_DATA__?.[key] ?? initialState;
   }
 
@@ -22,9 +21,9 @@ export const createStore = (key, reducer, initialState) => {
   const dispatch = (action) => {
     const newState = reducer(state, action);
 
+    // 서버 환경에서 컨텍스트에 상태 저장
     if (!("window" in globalThis)) {
-      console.log("newState", newState);
-      globalThis.initialData[key] = newState;
+      updateInitialData(key, newState);
     }
 
     if (newState !== state) {

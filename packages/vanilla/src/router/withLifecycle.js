@@ -70,17 +70,8 @@ export const withLifecycle = ({ onMount, onUnmount, watches } = {}, page) => {
   // 서버 환경에서는 async 함수 반환
   if (isServer) {
     return async (...args) => {
-      console.log("withLifecycle server");
-      // const wasNewPage = pageState.current !== page;
-
-      // // 현재 페이지 설정
-      // pageState.previous = pageState.current;
-      // pageState.current = page;
-
-      // // 서버에서는 항상 onMount 실행 후 렌더링
-      // if (wasNewPage) {
+      // 서버에서는 항상 onMount 실행 후 렌더링
       await mount(page);
-      // }
 
       // 페이지 함수 실행
       return page(...args);

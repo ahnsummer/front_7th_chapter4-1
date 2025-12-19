@@ -1,3 +1,5 @@
+import { getContext } from "../lib/asyncContext.js";
+
 export async function getProducts(params = {}) {
   const { limit = 20, search = "", category1 = "", category2 = "", sort = "price_asc" } = params;
   const page = params.current ?? params.page ?? 1;
@@ -11,17 +13,21 @@ export async function getProducts(params = {}) {
     sort,
   });
 
-  const response = await fetch(`${globalThis.origin ?? ""}/api/products?${searchParams}`);
+  const context = getContext();
+
+  const response = await fetch(`${context.origin ?? ""}/api/products?${searchParams}`);
 
   return await response.json();
 }
 
 export async function getProduct(productId) {
-  const response = await fetch(`${globalThis.origin ?? ""}/api/products/${productId}`);
+  const context = getContext();
+  const response = await fetch(`${context.origin ?? ""}/api/products/${productId}`);
   return await response.json();
 }
 
 export async function getCategories() {
-  const response = await fetch(`${globalThis.origin ?? ""}/api/categories`);
+  const context = getContext();
+  const response = await fetch(`${context.origin ?? ""}/api/categories`);
   return await response.json();
 }

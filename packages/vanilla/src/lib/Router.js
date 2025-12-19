@@ -2,6 +2,7 @@
  * 간단한 SPA 라우터
  */
 import { createObserver } from "./createObserver.js";
+import { getContext } from "./asyncContext.js";
 
 export class Router {
   #routes;
@@ -36,7 +37,14 @@ export class Router {
   }
 
   get params() {
-    return this.#route?.params ?? globalThis.params ?? {};
+    if (this.#route?.params) {
+      return this.#route.params;
+    }
+    if ("window" in globalThis) {
+      return {};
+    }
+    const context = getContext();
+    return context.params ?? {};
   }
 
   get route() {
@@ -108,7 +116,7 @@ export class Router {
       const prevFullUrl = `${getPathname()}${getSearch()}`;
 
       // 히스토리 업데이트
-      if (prevFullUrl !== fullUrl) {
+      if ("window" in globalThis && prevFullUrl !== fullUrl) {
         window.history.pushState(null, "", fullUrl);
       }
 
@@ -178,7 +186,8 @@ function getOrigin() {
   if ("window" in globalThis) {
     return window.location.origin;
   } else {
-    return globalThis.origin;
+    const context = getContext();
+    return context.origin;
   }
 }
 
@@ -186,7 +195,8 @@ function getPathname() {
   if ("window" in globalThis) {
     return window.location.pathname;
   } else {
-    return String(globalThis.pathname);
+    const context = getContext();
+    return String(context.pathname);
   }
 }
 
@@ -194,8 +204,9 @@ function getSearch() {
   if ("window" in globalThis) {
     return window.location.search;
   } else {
-    if (Object.keys(globalThis.search).length > 0) {
-      return `?${Object.entries(globalThis.search)
+    const context = getContext();
+    if (Object.keys(context.search).length > 0) {
+      return `?${Object.entries(context.search)
         .map(([key, value]) => `${key}=${value}`)
         .join("&")}`;
     } else {
